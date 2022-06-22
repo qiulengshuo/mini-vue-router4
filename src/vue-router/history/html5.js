@@ -151,14 +151,10 @@ export function createWebHistory (base = '') {
   )
   // 代理模式改写属性对应的值,方便直接get对应的值
   Object.defineProperty(routerHistory, 'location', {
-    get () {
-      historyNavigation.location.value
-    },
+    get: () => historyNavigation.location.value,
   })
   Object.defineProperty(routerHistory, 'state', {
-    get () {
-      historyNavigation.state.value
-    },
+    get: () => historyNavigation.state.value,
   })
   return routerHistory
 }

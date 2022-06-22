@@ -1,5 +1,16 @@
+import { computed, reactive, shallowRef, unref } from "vue"
+import { RouterLink } from "./router-link"
 import { createWebHashHistory } from "./history/hash"
 import { createWebHistory } from "./history/html5"
+
+// 初始化路由系统的默认参数
+const START_LOCATION_NORMALIZED = {
+  path: '/',
+  // 路径参数
+  // params: {},
+  // query: {},
+  matched: [] // 匹配到的 record 包括父 record 和子 record 。
+}
 
 function normalizedRouteRecord (record) {
   return {
@@ -49,10 +60,24 @@ function createRouterMatcher (routes) {
     }
 
     matchers.push(matcher)
-    console.log(matchers)
   }
   routes.forEach(route => addRoute(route))
+
+  function resolve (location) {
+    const matched = []
+    let path = location.path
+    let matcher = matchers.find(m => m.path === path)
+    while (matcher) {
+      matched.unshift(matcher.record)
+      matcher = matcher.parent
+    }
+    return {
+      path, matched
+    }
+  }
+
   return {
+    resolve,
     // 动态添加路由的函数
     addRoute
   }
@@ -69,16 +94,93 @@ function createRouter (options) {
   const routerHistory = options.history
   // 格式化路由配置 -> 拍平
   const matcher = createRouterMatcher(options.routes)
+  // $route
+  // 具有响应式，后续只需要改 .value 覆盖，更新视图即可。
+  const currentRoute = shallowRef(START_LOCATION_NORMALIZED)
+
+  // 初始化添加 前进后退按钮 回调函数
+  let ready
+  function markAsReady () {
+    if (ready) return
+    ready = true
+    routerHistory.listen((to) => {
+      const targetLocation = resolve(to)
+      const from = currentRoute.value
+      console.log(targetLocation)
+      finalizeNavigation(targetLocation, from, true)
+    })
+  }
+
+  function finalizeNavigation (to, from, replaced) {
+    // 初始化 | replace
+    if (from === START_LOCATION_NORMALIZED || replaced) {
+      routerHistory.replace(to.path)
+    } else {
+      // push
+      routerHistory.push(to.path)
+    }
+    // 修改当前 route
+    currentRoute.value = to
+    // 添加 listen 前进后退回调函数
+    markAsReady()
+  }
+
+  function resolve (to) {
+    // to = "/" to = { path: "/" }
+    if (typeof to === 'string') {
+      return matcher.resolve({ path: to })
+    }
+  }
+
+  function pushWithRedirect (to) {
+    // 获取目标路由配置
+    const targetLocation = resolve(to)
+    const from = currentRoute.value
+    console.log(targetLocation)
+    return finalizeNavigation(targetLocation, from)
+  }
+
+  // $router 上的 push
+  function push (to) {
+    return pushWithRedirect(to)
+  }
   // 返回一个路由对象，给 vue 安装插件
   const router = {
+    push,
     install (app) {
       console.log('use(router) -> 路由的安装')
-      app.component('RouterLink', {
-        setup: (props, { slots }) => () => <a>{slots.default && slots.default()}</a>
+
+      // 挂载 $route 和 $router 到 全局。
+      // 组件对象可以通过 this.$route 和 this.$router 获取。
+      const router = this
+      app.config.globalProperties.$router = router
+      // 因为 currentRoute 是响应式的，所以 $route 在获取的时候
+      // 也是实时获取。
+      Object.defineProperty(app.config.globalProperties, '$route', {
+        enumerable: true,
+        get: () => unref(currentRoute)
       })
+
+      // 通过 provide 和 inject 使用 router 和 route
+      // 路由对象
+      const reactiveRoute = {}
+      for (const key in START_LOCATION_NORMALIZED) {
+        reactiveRoute[key] = computed(() => currentRoute.value[key])
+      }
+      app.provide('router', router)
+      // 提供的值必须是响应式的，依赖于 currentRoute。
+      app.provide('route location', reactive(reactiveRoute))
+
+      // 注册路由组件 router-link router-view
+      app.component('RouterLink', RouterLink)
       app.component('RouterView', {
         setup: (props, { slots }) => () => <div></div>
       })
+
+      // 初始化 currentRoute
+      if (currentRoute.value === START_LOCATION_NORMALIZED) {
+        push(routerHistory.location)
+      }
     }
   }
   return router
