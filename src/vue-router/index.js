@@ -1,5 +1,6 @@
 import { computed, reactive, shallowRef, unref } from "vue"
 import { RouterLink } from "./router-link"
+import { RouterView } from "./router-view"
 import { createWebHashHistory } from "./history/hash"
 import { createWebHistory } from "./history/html5"
 
@@ -106,7 +107,6 @@ function createRouter (options) {
     routerHistory.listen((to) => {
       const targetLocation = resolve(to)
       const from = currentRoute.value
-      console.log(targetLocation)
       finalizeNavigation(targetLocation, from, true)
     })
   }
@@ -173,9 +173,7 @@ function createRouter (options) {
 
       // 注册路由组件 router-link router-view
       app.component('RouterLink', RouterLink)
-      app.component('RouterView', {
-        setup: (props, { slots }) => () => <div></div>
-      })
+      app.component('RouterView', RouterView)
 
       // 初始化 currentRoute
       if (currentRoute.value === START_LOCATION_NORMALIZED) {
