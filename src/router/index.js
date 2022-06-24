@@ -10,7 +10,10 @@ const routes = [
     children: [
       { path: 'a', component: { render: () => <h1>a页面</h1> } },
       { path: 'b', component: { render: () => <h1>b页面</h1> } }
-    ]
+    ],
+    beforeEnter (to, from, next) {
+      console.log('before enter', to)
+    }
   },
   {
     path: '/about',
@@ -26,5 +29,39 @@ const router = createRouter({
   history: createWebHistory(), // createWebHashHistory
   routes
 })
+
+router.beforeEach((to, from, next) => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      console.log('beforeEach1', to)
+      resolve()
+    }, 1000)
+  })
+})
+
+router.beforeEach((to, from, next) => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      console.log('beforeEach2', to)
+      resolve()
+    }, 1000)
+  })
+})
+
+router.beforeResolve((to, from, next) => {
+  console.log('beforeResolve', to)
+})
+
+router.afterEach((to, from, next) => {
+  console.log('afterEach', to)
+})
+
+// beforeRouteLeave
+// beforeEach
+// beforeRouteUpdate
+// beforeEnter
+// beforeRouterEnter
+// beforeResolve
+// afterEach
 
 export default router

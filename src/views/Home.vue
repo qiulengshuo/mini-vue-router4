@@ -17,6 +17,15 @@ export default {
   name: 'Home',
   components: {
     HelloWorld
+  },
+  beforeRouteLeave(to, from, next) {
+    console.log('beforeRouteLeave', to)
+  },
+  beforeRouteUpdate(to, from, next) {
+    console.log('beforeRouteUpdate', to)
+  },
+  beforeRouteEnter(to, from, next) {
+    console.log('beforeRouteEnter', to)
   }
 }
 </script>
